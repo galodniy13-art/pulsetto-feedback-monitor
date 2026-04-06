@@ -1,11 +1,11 @@
 const SUMMARY_PATH = "../data/weekly_summary.json";
 
 const SOURCE_ORDER = ["Reddit", "Reviews", "Web", "YouTube"];
-const SOURCE_COLORS = {
-  Reddit: "linear-gradient(180deg, #37597f 0%, #233b57 100%)",
-  Reviews: "linear-gradient(180deg, #2f6172 0%, #214956 100%)",
-  Web: "linear-gradient(180deg, #4b4a82 0%, #2f2f5d 100%)",
-  YouTube: "linear-gradient(180deg, #7a3e4d 0%, #592a36 100%)",
+const NETWORK_NODE_POSITION = {
+  Reddit: { x: 20, y: 24 },
+  Reviews: { x: 82, y: 24 },
+  Web: { x: 22, y: 80 },
+  YouTube: { x: 80, y: 80 },
 };
 
 const numberFmt = new Intl.NumberFormat("en-US");
@@ -31,46 +31,78 @@ function renderDashboard(summary) {
   setText("metric-top-issue", getTopKey(summary.issue_category_counts) ?? "No dominant issue");
   setText("metric-top-attribute", getTopKey(summary.attribute_counts) ?? "No dominant attribute");
 
+  const sourceStats = deriveSourceStats(summary, totalMentions, negativeMentions);
+  renderSignalNetwork(sourceStats, totalMentions, negativeMentions);
   renderIssueBars(summary.issue_category_counts);
   renderCriticalMentions(summary.top_critical_mentions);
-  renderActionList(summary.recommended_actions);
-  renderCity(summary, totalMentions, negativeMentions);
+  renderInsights(summary, sourceStats, totalMentions);
+  renderActionList(summary.recommended_actions, summary, sourceStats);
   updateTimestamp();
 }
 
-function renderCity(summary, totalMentions, negativeMentions) {
-  const buildingHost = document.getElementById("city-buildings");
-  buildingHost.innerHTML = "";
+function renderSignalNetwork(sourceStats, totalMentions, negativeMentions) {
+  const host = document.getElementById("signal-network");
+  host.innerHTML = "";
 
-  const sourceStats = deriveSourceStats(summary, totalMentions, negativeMentions);
-  const maxMentions = Math.max(...sourceStats.map((item) => item.mentions), 1);
+  const avgNegative = totalMentions > 0 ? Math.round((negativeMentions / totalMentions) * 100) : 0;
+  const centralNode = createNode({
+    title: "Pulsetto",
+    mentions: totalMentions,
+    negativePct: avgNegative,
+    urgencyLabel: resolveUrgencyLabel(negativeMentions, totalMentions),
+  }, true);
+
+  centralNode.style.left = "50%";
+  centralNode.style.top = "50%";
+  host.appendChild(centralNode);
+
+  const svg = createNetworkLines(sourceStats);
+  host.appendChild(svg);
 
   sourceStats.forEach((source) => {
-    const building = document.createElement("article");
-    building.className = "building";
-
-    const badgeRow = document.createElement("div");
-    badgeRow.className = "badge-row";
-    badgeRow.innerHTML = `
-      <span class="badge">${source.mentions} mentions</span>
-      <span class="badge badge-danger">${source.negativePct}% negative</span>
-      <span class="badge badge-warning">${source.urgent} urgent</span>
-    `;
-
-    const tower = document.createElement("div");
-    tower.className = "tower";
-    tower.style.height = `${Math.max(48, (source.mentions / maxMentions) * 150)}px`;
-    tower.style.background = SOURCE_COLORS[source.name] ?? SOURCE_COLORS.Web;
-
-    const label = document.createElement("p");
-    label.className = "tower-label";
-    label.textContent = source.name;
-
-    building.appendChild(badgeRow);
-    building.appendChild(tower);
-    building.appendChild(label);
-    buildingHost.appendChild(building);
+    const node = createNode(source, false);
+    const position = NETWORK_NODE_POSITION[source.name] ?? { x: 50, y: 50 };
+    node.style.left = `${position.x}%`;
+    node.style.top = `${position.y}%`;
+    host.appendChild(node);
   });
+}
+
+function createNetworkLines(sourceStats) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.classList.add("network-lines");
+
+  sourceStats.forEach((source) => {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const position = NETWORK_NODE_POSITION[source.name] ?? { x: 50, y: 50 };
+    const controlX = (50 + position.x) / 2;
+    const controlY = (50 + position.y) / 2 - (position.y > 50 ? 5 : -5);
+    path.setAttribute("d", `M 50 50 Q ${controlX} ${controlY}, ${position.x} ${position.y}`);
+    path.classList.add("network-line");
+    path.style.stroke = getSignalColor(source.negativePct);
+    svg.appendChild(path);
+  });
+
+  return svg;
+}
+
+function createNode(source, isCenter = false) {
+  const node = document.createElement("article");
+  node.className = `network-node ${isCenter ? "center" : ""}`;
+  const statusClass = getSignalStatusClass(source.negativePct);
+
+  node.innerHTML = `
+    <p class="node-title">${source.title ?? source.name}</p>
+    <div class="node-meta">
+      <span>${numberFmt.format(source.mentions)} mentions</span>
+      <span>${source.negativePct}% negative</span>
+      <span>Urgency: ${source.urgencyLabel}</span>
+    </div>
+    <span class="node-sentiment ${statusClass}">${getSentimentLabel(source.negativePct)}</span>
+  `;
+
+  return node;
 }
 
 function deriveSourceStats(summary, totalMentions, negativeMentions) {
@@ -93,7 +125,13 @@ function deriveSourceStats(summary, totalMentions, negativeMentions) {
     const negative = asNumber(negativeBySource[name]);
     const urgent = asNumber(urgentBySource[name]);
     const negativePct = mentions > 0 ? Math.round((negative / mentions) * 100) : 0;
-    return { name, mentions, negativePct, urgent };
+    return {
+      name,
+      mentions,
+      negativePct,
+      urgent,
+      urgencyLabel: resolveUrgencyLabel(urgent, mentions),
+    };
   });
 }
 
@@ -143,30 +181,108 @@ function renderCriticalMentions(mentions = []) {
   });
 }
 
-function renderActionList(actions = []) {
+function renderInsights(summary, sourceStats, totalMentions) {
+  const host = document.getElementById("insights-list");
+  host.innerHTML = "";
+
+  const topIssue = getTopKey(summary.issue_category_counts) ?? "No dominant issue yet";
+  const fastestGrowing = getTopKey(summary.week_over_week_growth_by_issue) ?? "Awaiting week-over-week growth input";
+  const trustRisk = deriveTrustRiskLevel(sourceStats);
+  const unanswered = asNumber(summary.unanswered_mentions);
+  const supportFailure = totalMentions > 0 && unanswered / totalMentions >= 0.25
+    ? `⚠️ Elevated (${numberFmt.format(unanswered)} unanswered mentions)`
+    : `Stable (${numberFmt.format(unanswered)} unanswered mentions)`;
+
+  const insights = [
+    `Top issue: ${topIssue}`,
+    `Fastest growing issue: ${fastestGrowing}`,
+    `Trust risk level: ${trustRisk}`,
+    `Support failure indicator: ${supportFailure}`,
+  ];
+
+  insights.forEach((insight) => {
+    const li = document.createElement("li");
+    li.textContent = insight;
+    host.appendChild(li);
+  });
+}
+
+function renderActionList(actions = [], summary = {}, sourceStats = []) {
   const host = document.getElementById("action-list");
   host.innerHTML = "";
 
-  if (!Array.isArray(actions) || actions.length === 0) {
-    host.innerHTML = `<li class="muted">No recommendations available yet.</li>`;
-    return;
+  const fallbackActions = buildFallbackActions(summary, sourceStats);
+  const chosenActions = Array.isArray(actions) && actions.length
+    ? actions.slice(0, 3)
+    : fallbackActions;
+
+  while (chosenActions.length < 3) {
+    chosenActions.push(fallbackActions[chosenActions.length] ?? "Continue weekly pulse checks and monitor escalation velocity.");
   }
 
-  actions.slice(0, 6).forEach((action) => {
+  chosenActions.slice(0, 3).forEach((action) => {
     const li = document.createElement("li");
     li.textContent = action;
     host.appendChild(li);
   });
 }
 
+function buildFallbackActions(summary = {}, sourceStats = []) {
+  const topIssue = getTopKey(summary.issue_category_counts) ?? "highest-frequency issue";
+  const highestRiskChannel = [...sourceStats].sort((a, b) => b.negativePct - a.negativePct)[0]?.name ?? "priority channels";
+
+  return [
+    `Launch a 72-hour remediation sprint for ${topIssue} with daily progress reporting.`,
+    `Deploy targeted response playbooks across ${highestRiskChannel} and close unanswered mentions within 12 hours.`,
+    "Publish a trust-recovery update outlining fixes, timelines, and support ownership.",
+  ];
+}
+
+function deriveTrustRiskLevel(sourceStats = []) {
+  const highestNegative = Math.max(...sourceStats.map((item) => item.negativePct), 0);
+  if (highestNegative >= 65) return "High";
+  if (highestNegative >= 35) return "Moderate";
+  return "Low";
+}
+
+function resolveUrgencyLabel(urgentMentions, mentions) {
+  const urgent = asNumber(urgentMentions);
+  const total = asNumber(mentions);
+  const ratio = total > 0 ? urgent / total : 0;
+
+  if (ratio >= 0.3 || urgent >= 25) return "High";
+  if (ratio >= 0.15 || urgent >= 10) return "Medium";
+  return "Low";
+}
+
+function getSentimentLabel(negativePct) {
+  if (negativePct >= 55) return "Negative";
+  if (negativePct >= 30) return "Mixed";
+  return "Positive";
+}
+
+function getSignalStatusClass(negativePct) {
+  if (negativePct >= 55) return "status-negative";
+  if (negativePct >= 30) return "status-mixed";
+  return "status-positive";
+}
+
+function getSignalColor(negativePct) {
+  if (negativePct >= 55) return "#ff5d6f";
+  if (negativePct >= 30) return "#f4c95d";
+  return "#31d78f";
+}
+
 function showFallback(error) {
   console.warn("Could not load weekly summary.", error);
   document.getElementById("fallback-message").classList.remove("hidden");
   updateTimestamp("Data unavailable");
-  renderCity({}, 0, 0);
+  const emptyStats = deriveSourceStats({}, 0, 0);
+  renderSignalNetwork(emptyStats, 0, 0);
   renderIssueBars({});
   renderCriticalMentions([]);
-  renderActionList([]);
+  renderInsights({}, emptyStats, 0);
+  renderActionList([], {}, emptyStats);
   setText("metric-total", "0");
   setText("metric-negative", "0");
   setText("metric-top-issue", "Unavailable");
