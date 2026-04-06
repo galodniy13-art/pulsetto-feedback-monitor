@@ -7,10 +7,76 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <main>
-      <h1>Pulsetto Feedback Monitor</h1>
-      <p>Weekly report dashboard scaffold.</p>
+    <main class="dashboard-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">University monitoring dashboard</p>
+          <h1>Pulsetto Feedback Monitor</h1>
+        </div>
+        <p id="last-updated" class="timestamp">Weekly summary</p>
+      </header>
+
+      <section class="panel city-overview" aria-labelledby="city-overview-title">
+        <div class="section-title-row">
+          <h2 id="city-overview-title">Overview City Map</h2>
+          <p class="section-subtitle">Signal intensity by channel</p>
+        </div>
+
+        <div class="city-canvas">
+          <img src="city.svg" alt="Abstract city skyline" class="city-backdrop">
+          <div id="city-buildings" class="buildings-grid" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="panel analytics" aria-labelledby="analytics-title">
+        <div class="section-title-row">
+          <h2 id="analytics-title">Analytics Panel</h2>
+          <p class="section-subtitle">Issue patterns and action priorities</p>
+        </div>
+
+        <div id="fallback-message" class="fallback hidden" role="status">
+          Summary data is unavailable. Run the weekly pipeline to populate
+          <code>data/weekly_summary.json</code> and refresh.
+        </div>
+
+        <div class="metric-grid" id="metric-grid">
+          <article class="metric-card">
+            <p class="metric-label">Total mentions</p>
+            <p id="metric-total" class="metric-value">—</p>
+          </article>
+          <article class="metric-card">
+            <p class="metric-label">Negative mentions</p>
+            <p id="metric-negative" class="metric-value">—</p>
+          </article>
+          <article class="metric-card">
+            <p class="metric-label">Top issue</p>
+            <p id="metric-top-issue" class="metric-value metric-text">—</p>
+          </article>
+          <article class="metric-card">
+            <p class="metric-label">Top attribute affected</p>
+            <p id="metric-top-attribute" class="metric-value metric-text">—</p>
+          </article>
+        </div>
+
+        <div class="analytics-grid">
+          <article class="content-card">
+            <h3>Issue Categories</h3>
+            <ul id="issue-bars" class="bar-list"></ul>
+          </article>
+
+          <article class="content-card">
+            <h3>Top Critical Mentions</h3>
+            <ul id="critical-list" class="bullet-list"></ul>
+          </article>
+
+          <article class="content-card">
+            <h3>Recommended Actions</h3>
+            <ul id="action-list" class="bullet-list"></ul>
+          </article>
+        </div>
+      </section>
     </main>
+
     <script src="app.js"></script>
   </body>
 </html>
