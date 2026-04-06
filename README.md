@@ -9,14 +9,20 @@ Simple MVP pipeline that collects public Reddit mentions of **"Pulsetto"**, clas
 - Avoids duplicates using `url` as unique key
 - Classifies each mention with deterministic keyword rules (no paid APIs):
   - `sentiment`: `positive`, `mixed`, `negative`
-  - `issue_category`: `support_silence`, `effectiveness_doubt`, `onboarding_confusion`, `comfort_wearability`, `price_value`, `trust_credibility`, `other`
+  - `issue_category`: `support_silence`, `poor_support_quality`, `no_results`, `weak_results`, `onboarding_confusion`, `app_connectivity`, `comfort_fit`, `price_value_mismatch`, `trust_skepticism`, `scientific_credibility`, `delivery_logistics`, `positive_advocacy`, `neutral_discussion`, `competitor_comparison`, `other`
   - `severity`: `low`, `medium`, `high`
-  - `attribute_affected`: `support`, `product`, `onboarding`, `comfort`, `price`, `trust`, `other`
+  - `attribute_affected`: mapped business area (`support`, `product`, `technical`, `delivery`, `trust`, etc.)
 - Generates `data/weekly_summary.json` with:
   - `total_mentions`
   - `negative_mentions`
   - `issue_category_counts`
   - `attribute_counts`
+  - `source_breakdown`
+  - `stage_breakdown` (`discovery`, `purchase`, `setup`, `first_use`, `support_aftercare`)
+  - `trust_risk_score`
+  - `support_gap_count`
+  - `top_positive_signals`
+  - `top_negative_signals`
   - `top_critical_mentions`
   - `recommended_actions`
 

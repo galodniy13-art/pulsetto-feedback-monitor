@@ -21,43 +21,113 @@ class ClassifiedMention(TypedDict):
     attribute_affected: str
 
 
-ISSUE_RULES: list[tuple[str, str, str, tuple[str, ...]]] = [
-    (
-        "support_silence",
-        "support",
-        "high",
-        ("support", "no response", "ignored", "ghosted", "ticket", "customer service"),
-    ),
-    (
-        "effectiveness_doubt",
-        "product",
-        "high",
-        ("doesn't work", "doesnt work", "not working", "ineffective", "no effect", "placebo"),
-    ),
-    (
-        "onboarding_confusion",
-        "onboarding",
-        "medium",
-        ("setup", "onboarding", "instructions", "how do i", "confusing", "pairing"),
-    ),
-    (
-        "comfort_wearability",
-        "comfort",
-        "medium",
-        ("uncomfortable", "comfort", "pain", "hurts", "tight", "wear"),
-    ),
-    (
-        "price_value",
-        "price",
-        "medium",
-        ("expensive", "price", "cost", "overpriced", "value", "refund"),
-    ),
-    (
-        "trust_credibility",
-        "trust",
-        "high",
-        ("scam", "fake", "misleading", "trust", "credible", "suspicious"),
-    ),
+ISSUE_TO_ATTRIBUTE: dict[str, str] = {
+    "support_silence": "support",
+    "poor_support_quality": "support",
+    "no_results": "product",
+    "weak_results": "product",
+    "onboarding_confusion": "onboarding",
+    "app_connectivity": "technical",
+    "comfort_fit": "comfort",
+    "price_value_mismatch": "price",
+    "trust_skepticism": "trust",
+    "scientific_credibility": "trust",
+    "delivery_logistics": "delivery",
+    "positive_advocacy": "advocacy",
+    "neutral_discussion": "discussion",
+    "competitor_comparison": "competition",
+    "other": "other",
+}
+
+CATEGORY_DEFAULT_SEVERITY: dict[str, str] = {
+    "support_silence": "high",
+    "poor_support_quality": "high",
+    "no_results": "high",
+    "weak_results": "medium",
+    "onboarding_confusion": "medium",
+    "app_connectivity": "medium",
+    "comfort_fit": "medium",
+    "price_value_mismatch": "medium",
+    "trust_skepticism": "high",
+    "scientific_credibility": "medium",
+    "delivery_logistics": "medium",
+    "positive_advocacy": "low",
+    "neutral_discussion": "low",
+    "competitor_comparison": "medium",
+    "other": "low",
+}
+
+CATEGORY_RULES: list[dict[str, object]] = [
+    {
+        "category": "support_silence",
+        "all_of": (("support", "customer support", "team", "ticket", "email", "help desk"), ("no reply", "no response", "ignored", "ghosted", "never heard", "still waiting", "unanswered", "radio silence")),
+        "any_of": (),
+    },
+    {
+        "category": "poor_support_quality",
+        "all_of": (("support", "agent", "customer service", "help desk", "ticket"), ("useless", "rude", "scripted", "generic", "not helpful", "didn't help", "did not help", "unhelpful", "slow", "frustrating")),
+        "any_of": (),
+    },
+    {
+        "category": "no_results",
+        "all_of": (("result", "results", "effect", "benefit", "improvement", "change", "sleep", "stress", "anxiety"), ("no", "none", "zero", "nothing", "didn't", "did not", "never", "without")),
+        "any_of": ("doesn't work", "doesnt work", "didn't work", "did not work", "not working", "no effect", "no results", "zero results", "nothing changed", "placebo"),
+    },
+    {
+        "category": "weak_results",
+        "all_of": (("result", "results", "effect", "benefit", "improvement"), ("slight", "small", "minimal", "weak", "barely", "inconsistent", "temporary")),
+        "any_of": ("works sometimes", "mixed results", "not strong", "underwhelming", "expected more"),
+    },
+    {
+        "category": "onboarding_confusion",
+        "all_of": (("setup", "onboarding", "instruction", "instructions", "manual", "pair"), ("confusing", "unclear", "can't", "cannot", "how do i", "stuck", "difficult")),
+        "any_of": ("getting started", "first time setup", "pairing issue", "how to use", "which mode"),
+    },
+    {
+        "category": "app_connectivity",
+        "all_of": (("app", "bluetooth", "pair", "connection", "connect", "firmware", "sync"), ("fail", "failed", "disconnect", "not connect", "won't connect", "keeps dropping", "bug", "crash")),
+        "any_of": ("app not working", "cannot connect", "can't connect", "connection issue", "bluetooth issue", "sync issue"),
+    },
+    {
+        "category": "comfort_fit",
+        "all_of": (("wear", "neck", "fit", "strap", "device"), ("uncomfortable", "tight", "pain", "hurts", "itch", "pressure", "too loose", "too tight")),
+        "any_of": ("hard to wear", "not comfortable", "comfort issue"),
+    },
+    {
+        "category": "price_value_mismatch",
+        "all_of": (("price", "cost", "expensive", "pricing", "refund", "money"), ("worth", "value", "overpriced", "too much", "not worth", "waste")),
+        "any_of": ("not worth it", "too expensive", "overpriced", "value for money"),
+    },
+    {
+        "category": "trust_skepticism",
+        "all_of": (("trust", "legit", "legitimate", "company", "brand"), ("scam", "fake", "suspicious", "misleading", "dishonest", "sketchy")),
+        "any_of": ("is this a scam", "too good to be true", "fake reviews", "don't trust"),
+    },
+    {
+        "category": "scientific_credibility",
+        "all_of": (("science", "scientific", "study", "evidence", "research", "clinical"), ("proof", "proven", "credible", "skeptical", "unsupported", "pseudoscience")),
+        "any_of": ("where is the evidence", "any studies", "clinical proof", "peer reviewed"),
+    },
+    {
+        "category": "delivery_logistics",
+        "all_of": (("shipping", "delivery", "shipment", "order", "tracking", "customs"), ("late", "delay", "lost", "damaged", "stuck", "never arrived")),
+        "any_of": ("shipping delay", "delivery issue", "order not arrived", "tracking not updated"),
+    },
+    {
+        "category": "competitor_comparison",
+        "all_of": (("vs", "versus", "compared", "alternative", "better than", "instead of"), ("pulsetto", "sensate", "apollo", "calm", "nurosym")),
+        "any_of": ("any alternatives", "competitor", "competing product", "is x better"),
+    },
+    {
+        "category": "positive_advocacy",
+        "all_of": (("love", "great", "helped", "works", "worked", "recommend", "impressed", "happy"),),
+        "any_of": ("highly recommend", "worth it", "game changer", "really helped", "good experience"),
+    },
+    {
+        "category": "neutral_discussion",
+        "all_of": (("anyone", "thoughts", "experience", "opinions", "question", "curious", "considering"),),
+        "any_of": ("has anyone tried", "what do you think", "looking for feedback", "any review"),
+    },
 ]
 
 POSITIVE_KEYWORDS = (
@@ -66,8 +136,12 @@ POSITIVE_KEYWORDS = (
     "love",
     "helpful",
     "works",
+    "worked",
     "better",
     "recommend",
+    "improved",
+    "happy",
+    "satisfied",
 )
 
 NEGATIVE_KEYWORDS = (
@@ -79,6 +153,22 @@ NEGATIVE_KEYWORDS = (
     "problem",
     "disappointed",
     "hate",
+    "frustrating",
+    "scam",
+    "useless",
+    "not working",
+)
+
+HIGH_INTENSITY_KEYWORDS = (
+    "scam",
+    "fraud",
+    "never",
+    "useless",
+    "angry",
+    "furious",
+    "waste of money",
+    "chargeback",
+    "legal",
 )
 
 
@@ -91,35 +181,118 @@ def _combine_text(mention: dict[str, str]) -> str:
     return f"{title} {body}".strip().lower()
 
 
+def _rule_matches(combined_text: str, rule: dict[str, object]) -> bool:
+    all_of_groups = rule.get("all_of", ())
+    any_of_patterns = rule.get("any_of", ())
+
+    for group in all_of_groups:
+        if not any(token in combined_text for token in group):
+            return False
+
+    if any_of_patterns and any(pattern in combined_text for pattern in any_of_patterns):
+        return True
+
+    return bool(all_of_groups)
+
+
+def _secondary_pass_category(combined_text: str, sentiment: str) -> str | None:
+    """Use broad phrase combinations before falling back to `other`."""
+    if any(token in combined_text for token in ("support", "ticket", "customer service", "reply")):
+        if any(token in combined_text for token in ("no", "never", "waiting", "ignored", "ghosted", "unanswered")):
+            return "support_silence"
+        if sentiment == "negative":
+            return "poor_support_quality"
+
+    if any(token in combined_text for token in ("result", "effect", "benefit", "improvement", "work")):
+        if any(token in combined_text for token in ("no", "none", "nothing", "didn't", "did not", "never", "zero")):
+            return "no_results"
+        if sentiment in ("mixed", "negative"):
+            return "weak_results"
+
+    if any(token in combined_text for token in ("connect", "connection", "bluetooth", "app", "sync", "pair")):
+        if any(token in combined_text for token in ("can't", "cannot", "failed", "drop", "bug", "crash", "not")):
+            return "app_connectivity"
+
+    if any(token in combined_text for token in ("setup", "onboard", "instruction", "how do i", "first time")):
+        return "onboarding_confusion"
+
+    if any(token in combined_text for token in ("delivery", "shipping", "shipment", "tracking", "order")):
+        return "delivery_logistics"
+
+    if any(token in combined_text for token in ("scam", "fake", "misleading", "suspicious")):
+        return "trust_skepticism"
+
+    if any(token in combined_text for token in ("science", "study", "evidence", "research", "clinical")):
+        return "scientific_credibility"
+
+    if any(token in combined_text for token in ("vs", "versus", "alternative", "better than", "instead of")):
+        return "competitor_comparison"
+
+    if sentiment == "positive":
+        return "positive_advocacy"
+
+    if sentiment == "mixed" and any(token in combined_text for token in ("anyone", "thoughts", "opinions", "question", "curious")):
+        return "neutral_discussion"
+
+    return None
+
+
+def _derive_sentiment(combined_text: str) -> str:
+    positive_hits = sum(1 for keyword in POSITIVE_KEYWORDS if keyword in combined_text)
+    negative_hits = sum(1 for keyword in NEGATIVE_KEYWORDS if keyword in combined_text)
+
+    if "not worth" in combined_text or "not working" in combined_text or "no response" in combined_text:
+        negative_hits += 1
+
+    if positive_hits > 0 and negative_hits > 0:
+        return "mixed"
+    if negative_hits > 0:
+        return "negative"
+    if positive_hits > 0:
+        return "positive"
+    return "mixed"
+
+
+def _derive_severity(combined_text: str, category: str, sentiment: str) -> str:
+    severity_rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    severity = CATEGORY_DEFAULT_SEVERITY.get(category, "low")
+
+    if sentiment == "negative" and severity_rank[severity] < severity_rank["medium"]:
+        severity = "medium"
+
+    if any(token in combined_text for token in HIGH_INTENSITY_KEYWORDS):
+        if severity_rank[severity] < severity_rank["high"]:
+            severity = "high"
+
+    if category in {"support_silence", "no_results", "trust_skepticism"} and any(
+        token in combined_text for token in ("months", "chargeback", "never again", "fraud", "report")
+    ):
+        severity = "critical"
+
+    if category in {"positive_advocacy", "neutral_discussion"}:
+        return "low"
+
+    return severity
+
+
 def classify_mention(mention: dict[str, str]) -> ClassifiedMention:
     """Classify one mention with deterministic keyword matching."""
     combined_text = _combine_text(mention)
+    sentiment = _derive_sentiment(combined_text)
 
-    positive_hit = any(keyword in combined_text for keyword in POSITIVE_KEYWORDS)
-    negative_hit = any(keyword in combined_text for keyword in NEGATIVE_KEYWORDS)
-
-    if positive_hit and negative_hit:
-        sentiment = "mixed"
-    elif negative_hit:
-        sentiment = "negative"
-    elif positive_hit:
-        sentiment = "positive"
-    else:
-        sentiment = "mixed"
-
-    issue_category = "other"
-    attribute_affected = "other"
-    severity = "low"
-
-    for category, attribute, default_severity, keywords in ISSUE_RULES:
-        if any(keyword in combined_text for keyword in keywords):
-            issue_category = category
-            attribute_affected = attribute
-            severity = default_severity
+    category = None
+    for rule in CATEGORY_RULES:
+        if _rule_matches(combined_text, rule):
+            category = str(rule["category"])
             break
 
-    if sentiment == "negative" and severity == "low":
-        severity = "medium"
+    if category is None:
+        category = _secondary_pass_category(combined_text, sentiment)
+
+    if category is None:
+        category = "other"
+
+    severity = _derive_severity(combined_text, category, sentiment)
 
     return {
         "title": str(mention.get("title", "") or ""),
@@ -130,9 +303,9 @@ def classify_mention(mention: dict[str, str]) -> ClassifiedMention:
         "url": str(mention.get("url", "") or ""),
         "source": str(mention.get("source", "") or ""),
         "sentiment": sentiment,
-        "issue_category": issue_category,
+        "issue_category": category,
         "severity": severity,
-        "attribute_affected": attribute_affected,
+        "attribute_affected": ISSUE_TO_ATTRIBUTE.get(category, "other"),
     }
 
 

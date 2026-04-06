@@ -3,10 +3,16 @@
   "negative_mentions": 0,
   "issue_category_counts": {},
   "attribute_counts": {},
+  "source_breakdown": {},
+  "stage_breakdown": {},
+  "trust_risk_score": 0,
+  "support_gap_count": 0,
+  "top_positive_signals": [],
+  "top_negative_signals": [],
   "top_critical_mentions": [],
   "recommended_actions": [
-    "Review all high-severity mentions and respond within 24 hours.",
-    "Clarify onboarding steps and troubleshooting in a short quick-start guide.",
-    "Create a recurring FAQ update from top issue categories each week."
+    "Prioritize support backlog cleanup and enforce a 24-hour first-response SLA.",
+    "Publish clearer setup and app troubleshooting guidance to reduce first-week friction.",
+    "Address trust questions with transparent evidence, expectations, and side-by-side comparisons."
   ]
 }
