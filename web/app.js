@@ -1,4 +1,4 @@
-const SUMMARY_PATH = "../data/weekly_summary.json";
+const SUMMARY_PATH = new URL("../data/weekly_summary.json", window.location.href).toString();
 
 const CATEGORY_META = {
   support_silence: { label: "Support Silence", icon: "◎", severity: "critical", stage: "Support / Aftercare" },
