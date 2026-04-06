@@ -161,35 +161,35 @@ function renderHeroStrip(model) {
   setMetricCard("hero-trust", {
     label: "Trust Risk",
     value: `${Math.round(shareNegative)}%`,
-    sub: `${trendLabel(model.growthByIssue.trust_skepticism)} trust skepticism`,
+    sub: `${trendLabel(model.growthByIssue.trust_skepticism)} trust concerns`,
     severity: trustRisk,
   });
 
   setMetricCard("hero-support", {
     label: "Support Gap",
     value: `${Math.round(pct(supportIssueLoad, total))}%`,
-    sub: `${numberFmt.format(supportIssueLoad)} support friction mentions`,
+    sub: `${numberFmt.format(supportIssueLoad)} mentions about support delays or quality`,
     severity: scoreBand(pct(supportIssueLoad, total), [10, 17, 30], true),
   });
 
   setMetricCard("hero-conversion", {
-    label: "Conversion Friction",
+    label: "Purchase Friction",
     value: `${Math.round(pct(conversionLoad, total))}%`,
-    sub: `${trendLabel(avg([model.growthByIssue.price_value_mismatch, model.growthByIssue.competitor_comparison]))} purchase-stage pressure`,
+    sub: `${trendLabel(avg([model.growthByIssue.price_value_mismatch, model.growthByIssue.competitor_comparison]))} pressure during purchase decisions`,
     severity: scoreBand(pct(conversionLoad, total), [10, 18, 28], true),
   });
 
   setMetricCard("hero-retention", {
-    label: "Retention Friction",
+    label: "Post-Purchase Friction",
     value: `${Math.round(pct(retentionLoad, total))}%`,
-    sub: `${trendLabel(avg([model.growthByIssue.no_results, model.growthByIssue.support_silence]))} post-purchase strain`,
+    sub: `${trendLabel(avg([model.growthByIssue.no_results, model.growthByIssue.support_silence]))} customers struggling after purchase`,
     severity: scoreBand(pct(retentionLoad, total), [14, 26, 40], true),
   });
 
   setMetricCard("hero-mentions", {
     label: "Total Mentions",
     value: numberFmt.format(total),
-    sub: total ? `${numberFmt.format(negatives)} risk-bearing signals` : "Awaiting weekly signal volume",
+    sub: total ? `${numberFmt.format(negatives)} mentions that may damage trust` : "Waiting for this week’s mention volume",
     severity: total >= 100 ? "low" : "medium",
   });
 }
@@ -210,7 +210,7 @@ function renderIssueLandscape(model) {
 
   const ranked = rankIssues(model.issueCounts).slice(0, 10);
   if (!ranked.length) {
-    host.innerHTML = `<li class="empty-state">No issue categories captured in this cycle.</li>`;
+    host.innerHTML = `<li class="empty-state">No issue categories were captured in this cycle.</li>`;
     return;
   }
 
@@ -232,7 +232,7 @@ function renderIssueLandscape(model) {
       <div class="issue-track"><div class="issue-fill" style="width:${width}%"></div></div>
       <div class="issue-foot">
         <span class="issue-trend">Momentum: <strong>${trend}</strong></span>
-        <span class="issue-source">Stage: ${item.stage}</span>
+        <span class="issue-source">Main stage: ${item.stage}</span>
       </div>
     `;
 
@@ -259,8 +259,8 @@ function renderJourney(model) {
     step.innerHTML = `
       <p class="step-name">${item.stage}</p>
       <p class="step-intensity">${intensity}%</p>
-      <p class="step-top-issue">Top drag: ${item.topIssue ? item.topIssue.label : "No dominant friction"}</p>
-      <p class="step-signals">${numberFmt.format(item.count)} mapped signals</p>
+      <p class="step-top-issue">Top blocker: ${item.topIssue ? item.topIssue.label : "No dominant blocker"}</p>
+      <p class="step-signals">${numberFmt.format(item.count)} related mentions</p>
     `;
     host.appendChild(step);
   });
@@ -287,7 +287,7 @@ function renderActions(model) {
     li.innerHTML = `
       <div class="action-head">
         <p class="action-title">${action.title}</p>
-        <span class="impact-chip">${action.impact} impact</span>
+        <span class="impact-chip" data-impact="${action.impact.toLowerCase()}">${action.impact} impact</span>
       </div>
       <p class="action-rationale">${action.rationale}</p>
     `;
@@ -304,17 +304,17 @@ function buildActionPriorities(model) {
     {
       title: `Close ${top} in a 7-day intervention sprint`,
       impact: "High",
-      rationale: "Highest-volume friction is weakening trust and amplifying churn risk across critical stages.",
+      rationale: "This is the largest issue cluster and it is likely pulling down trust if left unresolved.",
     },
     {
-      title: `Deploy guided recovery for ${second.toLowerCase()} signals`,
+      title: `Launch a guided fix flow for ${second.toLowerCase()} mentions`,
       impact: "Medium",
-      rationale: "Targeted education and expectation-setting reduces first-use disappointment and repeat complaints.",
+      rationale: "Clear guidance and expectation-setting can reduce first-use disappointment and repeat complaints.",
     },
     {
-      title: "Instrument escalation loop across Support / Aftercare",
+      title: "Add a clear escalation path in Support / Aftercare",
       impact: "High",
-      rationale: "Create accountable owners for unresolved high-severity mentions and reduce response delays.",
+      rationale: "Assign clear owners for unresolved high-severity mentions and shorten response time.",
     },
   ];
 }
@@ -324,7 +324,7 @@ function renderVerbatim(model) {
   host.innerHTML = "";
 
   if (!model.mentions.length) {
-    host.innerHTML = `<li class="empty-state">No critical mentions in this summary window.</li>`;
+    host.innerHTML = `<li class="empty-state">No critical mentions were captured in this summary window.</li>`;
     return;
   }
 
@@ -339,7 +339,7 @@ function renderVerbatim(model) {
         <span class="meta-chip">${mention.source}</span>
       </div>
       <p class="mention-quote">“${mention.text}”</p>
-      ${mention.url ? `<a class="mention-link" href="${mention.url}" target="_blank" rel="noopener noreferrer">Open source mention ↗</a>` : ""}
+      ${mention.url ? `<a class="mention-link" href="${mention.url}" target="_blank" rel="noopener noreferrer">View source mention ↗</a>` : ""}
     `;
     host.appendChild(li);
   });
