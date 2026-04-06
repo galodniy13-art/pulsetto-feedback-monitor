@@ -3,79 +3,69 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Pulsetto Feedback Monitor</title>
+    <title>Pulsetto Reputation Intelligence Console</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="dashboard-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">University monitoring dashboard</p>
-          <h1>Pulsetto Feedback Monitor</h1>
+          <p class="eyebrow">Pulsetto neurotech reputation intelligence</p>
+          <h1>Reputation Intelligence Console</h1>
         </div>
-        <p id="last-updated" class="timestamp">Weekly summary</p>
+        <p id="last-updated" class="timestamp">Updated: —</p>
       </header>
 
-      <section class="panel signal-overview" aria-labelledby="signal-overview-title">
-        <div class="section-title-row">
-          <h2 id="signal-overview-title">Signal Network</h2>
-          <p class="section-subtitle">Neural channel health and urgency pulse</p>
-        </div>
+      <div id="fallback-message" class="fallback hidden" role="status">
+        Summary data is unavailable. Run the weekly pipeline to populate
+        <code>data/weekly_summary.json</code> and refresh.
+      </div>
 
-        <div id="signal-network" class="network-canvas" aria-live="polite"></div>
+      <section class="hero-strip" aria-label="Hero status indicators">
+        <article class="hero-metric" data-severity="medium" id="hero-health"></article>
+        <article class="hero-metric" data-severity="high" id="hero-trust"></article>
+        <article class="hero-metric" data-severity="high" id="hero-support"></article>
+        <article class="hero-metric" data-severity="medium" id="hero-conversion"></article>
+        <article class="hero-metric" data-severity="medium" id="hero-retention"></article>
+        <article class="hero-metric" data-severity="low" id="hero-mentions"></article>
       </section>
 
-      <section class="panel analytics" aria-labelledby="analytics-title">
-        <div class="section-title-row">
-          <h2 id="analytics-title">Analytics Panel</h2>
-          <p class="section-subtitle">Issue patterns and action priorities</p>
-        </div>
+      <section class="dashboard-grid" aria-label="Reputation intelligence dashboard">
+        <article class="panel issue-landscape" aria-labelledby="issue-landscape-title">
+          <div class="section-title-row">
+            <div>
+              <h2 id="issue-landscape-title">Issue Landscape</h2>
+              <p class="section-subtitle">Ranked by current frequency, share, and momentum.</p>
+            </div>
+          </div>
+          <ul id="issue-landscape-list" class="issue-list"></ul>
+        </article>
 
-        <div id="fallback-message" class="fallback hidden" role="status">
-          Summary data is unavailable. Run the weekly pipeline to populate
-          <code>data/weekly_summary.json</code> and refresh.
-        </div>
+        <article class="panel right-rail" aria-label="Action priorities and verbatim feed">
+          <section class="stacked-section" aria-labelledby="actions-title">
+            <div class="section-title-row compact">
+              <h2 id="actions-title">Action Priorities</h2>
+            </div>
+            <ul id="action-priorities" class="action-list"></ul>
+          </section>
 
-        <div class="metric-grid" id="metric-grid">
-          <article class="metric-card">
-            <p class="metric-label">Total mentions</p>
-            <p id="metric-total" class="metric-value">—</p>
-          </article>
-          <article class="metric-card">
-            <p class="metric-label">Negative mentions</p>
-            <p id="metric-negative" class="metric-value">—</p>
-          </article>
-          <article class="metric-card">
-            <p class="metric-label">Top issue</p>
-            <p id="metric-top-issue" class="metric-value metric-text">—</p>
-          </article>
-          <article class="metric-card">
-            <p class="metric-label">Top attribute affected</p>
-            <p id="metric-top-attribute" class="metric-value metric-text">—</p>
-          </article>
-        </div>
+          <section class="stacked-section" aria-labelledby="verbatim-title">
+            <div class="section-title-row compact">
+              <h2 id="verbatim-title">Critical Verbatim Feed</h2>
+            </div>
+            <ul id="verbatim-feed" class="mention-list"></ul>
+          </section>
+        </article>
 
-        <div class="analytics-grid">
-          <article class="content-card">
-            <h3>Issue Categories</h3>
-            <ul id="issue-bars" class="bar-list"></ul>
-          </article>
-
-          <article class="content-card">
-            <h3>Top Critical Mentions</h3>
-            <ul id="critical-list" class="bullet-list"></ul>
-          </article>
-
-          <article class="content-card">
-            <h3>Key Insights</h3>
-            <ul id="insights-list" class="bullet-list"></ul>
-          </article>
-
-          <article class="content-card span-two">
-            <h3>Recommended Actions</h3>
-            <ul id="action-list" class="bullet-list"></ul>
-          </article>
-        </div>
+        <article class="panel friction-journey" aria-labelledby="journey-title">
+          <div class="section-title-row">
+            <div>
+              <h2 id="journey-title">Customer Friction Journey</h2>
+              <p class="section-subtitle">Where customer experience breaks across lifecycle stages.</p>
+            </div>
+          </div>
+          <div id="journey-track" class="journey-track"></div>
+        </article>
       </section>
     </main>
 

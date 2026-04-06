@@ -1,13 +1,57 @@
 const SUMMARY_PATH = "../data/weekly_summary.json";
 
-const SOURCE_ORDER = ["Reddit", "Reviews", "Web", "YouTube"];
-const NETWORK_NODE_POSITION = {
-  Reddit: { x: 20, y: 24 },
-  Reviews: { x: 82, y: 24 },
-  Web: { x: 22, y: 80 },
-  YouTube: { x: 80, y: 80 },
+const CATEGORY_META = {
+  support_silence: { label: "Support Silence", icon: "◎", severity: "critical", stage: "Support / Aftercare" },
+  poor_support_quality: { label: "Poor Support Quality", icon: "◉", severity: "high", stage: "Support / Aftercare" },
+  no_results: { label: "No Results", icon: "◍", severity: "critical", stage: "First Use" },
+  weak_results: { label: "Weak Results", icon: "◌", severity: "high", stage: "First Use" },
+  onboarding_confusion: { label: "Onboarding Confusion", icon: "◈", severity: "high", stage: "Setup" },
+  app_connectivity: { label: "App Connectivity", icon: "◐", severity: "high", stage: "Setup" },
+  comfort_fit: { label: "Comfort & Fit", icon: "◑", severity: "medium", stage: "First Use" },
+  price_value_mismatch: { label: "Price-Value Mismatch", icon: "◒", severity: "medium", stage: "Purchase" },
+  trust_skepticism: { label: "Trust Skepticism", icon: "◓", severity: "high", stage: "Discovery" },
+  scientific_credibility: { label: "Scientific Credibility", icon: "◔", severity: "high", stage: "Discovery" },
+  delivery_logistics: { label: "Delivery Logistics", icon: "◕", severity: "medium", stage: "Purchase" },
+  positive_advocacy: { label: "Positive Advocacy", icon: "✦", severity: "low", stage: "Support / Aftercare" },
+  neutral_discussion: { label: "Neutral Discussion", icon: "·", severity: "low", stage: "Discovery" },
+  competitor_comparison: { label: "Competitor Comparison", icon: "▣", severity: "medium", stage: "Discovery" },
 };
 
+const LEGACY_CATEGORY_MAP = {
+  customer_support: "poor_support_quality",
+  support: "poor_support_quality",
+  unanswered_mentions: "support_silence",
+  no_response: "support_silence",
+  efficacy: "weak_results",
+  effectiveness: "weak_results",
+  no_effect: "no_results",
+  no_improvement: "no_results",
+  onboarding: "onboarding_confusion",
+  setup: "onboarding_confusion",
+  technical: "app_connectivity",
+  connectivity: "app_connectivity",
+  bluetooth: "app_connectivity",
+  app_bug: "app_connectivity",
+  comfort: "comfort_fit",
+  fit: "comfort_fit",
+  pricing: "price_value_mismatch",
+  price: "price_value_mismatch",
+  value: "price_value_mismatch",
+  trust: "trust_skepticism",
+  scam: "trust_skepticism",
+  credibility: "scientific_credibility",
+  science: "scientific_credibility",
+  shipping: "delivery_logistics",
+  delivery: "delivery_logistics",
+  logistics: "delivery_logistics",
+  positive: "positive_advocacy",
+  praise: "positive_advocacy",
+  neutral: "neutral_discussion",
+  comparison: "competitor_comparison",
+  competitor: "competitor_comparison",
+};
+
+const JOURNEY_STAGES = ["Discovery", "Purchase", "Setup", "First Use", "Support / Aftercare"];
 const numberFmt = new Intl.NumberFormat("en-US");
 
 async function loadSummary() {
@@ -15,278 +59,413 @@ async function loadSummary() {
     const response = await fetch(SUMMARY_PATH, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const summary = await response.json();
-    if (!summary || typeof summary !== "object") throw new Error("Invalid summary JSON");
-    renderDashboard(summary);
+    renderDashboard(normalizeSummary(summary));
   } catch (error) {
     showFallback(error);
   }
 }
 
-function renderDashboard(summary) {
+function normalizeSummary(summary = {}) {
   const totalMentions = asNumber(summary.total_mentions);
   const negativeMentions = asNumber(summary.negative_mentions);
+  const issueCounts = normalizeIssueCounts(summary.issue_category_counts || {});
+  const growthByIssue = normalizeGrowthMap(summary.week_over_week_growth_by_issue || {});
+  const mentions = normalizeMentions(summary.top_critical_mentions || [], issueCounts);
 
-  setText("metric-total", numberFmt.format(totalMentions));
-  setText("metric-negative", numberFmt.format(negativeMentions));
-  setText("metric-top-issue", getTopKey(summary.issue_category_counts) ?? "No dominant issue");
-  setText("metric-top-attribute", getTopKey(summary.attribute_counts) ?? "No dominant attribute");
-
-  const sourceStats = deriveSourceStats(summary, totalMentions, negativeMentions);
-  renderSignalNetwork(sourceStats, totalMentions, negativeMentions);
-  renderIssueBars(summary.issue_category_counts);
-  renderCriticalMentions(summary.top_critical_mentions);
-  renderInsights(summary, sourceStats, totalMentions);
-  renderActionList(summary.recommended_actions, summary, sourceStats);
-  updateTimestamp();
+  return {
+    raw: summary,
+    totalMentions,
+    negativeMentions,
+    issueCounts,
+    growthByIssue,
+    mentions,
+  };
 }
 
-function renderSignalNetwork(sourceStats, totalMentions, negativeMentions) {
-  const host = document.getElementById("signal-network");
-  host.innerHTML = "";
+function normalizeIssueCounts(rawCounts) {
+  const normalized = {};
 
-  const avgNegative = totalMentions > 0 ? Math.round((negativeMentions / totalMentions) * 100) : 0;
-  const centralNode = createNode({
-    title: "Pulsetto",
-    mentions: totalMentions,
-    negativePct: avgNegative,
-    urgencyLabel: resolveUrgencyLabel(negativeMentions, totalMentions),
-  }, true);
+  Object.entries(rawCounts || {}).forEach(([rawKey, rawValue]) => {
+    const value = asNumber(rawValue);
+    if (value <= 0) return;
 
-  centralNode.style.left = "50%";
-  centralNode.style.top = "50%";
-  host.appendChild(centralNode);
-
-  const svg = createNetworkLines(sourceStats);
-  host.appendChild(svg);
-
-  sourceStats.forEach((source) => {
-    const node = createNode(source, false);
-    const position = NETWORK_NODE_POSITION[source.name] ?? { x: 50, y: 50 };
-    node.style.left = `${position.x}%`;
-    node.style.top = `${position.y}%`;
-    host.appendChild(node);
-  });
-}
-
-function createNetworkLines(sourceStats) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 100 100");
-  svg.classList.add("network-lines");
-
-  sourceStats.forEach((source) => {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    const position = NETWORK_NODE_POSITION[source.name] ?? { x: 50, y: 50 };
-    const controlX = (50 + position.x) / 2;
-    const controlY = (50 + position.y) / 2 - (position.y > 50 ? 5 : -5);
-    path.setAttribute("d", `M 50 50 Q ${controlX} ${controlY}, ${position.x} ${position.y}`);
-    path.classList.add("network-line");
-    path.style.stroke = getSignalColor(source.negativePct);
-    svg.appendChild(path);
+    const canonical = mapToCanonicalCategory(rawKey);
+    normalized[canonical] = (normalized[canonical] || 0) + value;
   });
 
-  return svg;
-}
-
-function createNode(source, isCenter = false) {
-  const node = document.createElement("article");
-  node.className = `network-node ${isCenter ? "center" : ""}`;
-  const statusClass = getSignalStatusClass(source.negativePct);
-
-  node.innerHTML = `
-    <p class="node-title">${source.title ?? source.name}</p>
-    <div class="node-meta">
-      <span>${numberFmt.format(source.mentions)} mentions</span>
-      <span>${source.negativePct}% negative</span>
-      <span>Urgency: ${source.urgencyLabel}</span>
-    </div>
-    <span class="node-sentiment ${statusClass}">${getSentimentLabel(source.negativePct)}</span>
-  `;
-
-  return node;
-}
-
-function deriveSourceStats(summary, totalMentions, negativeMentions) {
-  const mentionBySource = normalizeSourceMap(summary.mentions_by_source);
-  const negativeBySource = normalizeSourceMap(summary.negative_mentions_by_source);
-  const urgentBySource = normalizeSourceMap(summary.urgent_mentions_by_source);
-
-  const allZeros = SOURCE_ORDER.every((name) => !mentionBySource[name]);
-  if (allZeros) {
-    const weightedFallback = [0.38, 0.27, 0.25, 0.1];
-    SOURCE_ORDER.forEach((name, i) => {
-      mentionBySource[name] = Math.round(totalMentions * weightedFallback[i]);
-      negativeBySource[name] = Math.round(negativeMentions * weightedFallback[i]);
-      urgentBySource[name] = Math.max(0, Math.round(negativeBySource[name] * 0.28));
-    });
+  if (!Object.keys(normalized).length) {
+    return {
+      support_silence: 0,
+      onboarding_confusion: 0,
+      weak_results: 0,
+      trust_skepticism: 0,
+      app_connectivity: 0,
+    };
   }
 
-  return SOURCE_ORDER.map((name) => {
-    const mentions = asNumber(mentionBySource[name]);
-    const negative = asNumber(negativeBySource[name]);
-    const urgent = asNumber(urgentBySource[name]);
-    const negativePct = mentions > 0 ? Math.round((negative / mentions) * 100) : 0;
+  return normalized;
+}
+
+function normalizeGrowthMap(rawGrowth) {
+  const normalized = {};
+  Object.entries(rawGrowth || {}).forEach(([key, value]) => {
+    normalized[mapToCanonicalCategory(key)] = Number(value);
+  });
+  return normalized;
+}
+
+function normalizeMentions(items, issueCounts) {
+  if (!Array.isArray(items) || !items.length) return [];
+
+  return items.map((item) => {
+    const canonical = mapToCanonicalCategory(item.issue_category || item.category || "neutral_discussion", issueCounts);
     return {
-      name,
-      mentions,
-      negativePct,
-      urgent,
-      urgencyLabel: resolveUrgencyLabel(urgent, mentions),
+      issueCategory: canonical,
+      severity: normalizeSeverity(item.severity, canonical),
+      source: cleanSource(item.source || item.channel || "Unknown"),
+      text: cleanText(item.text || item.quote || "Mention text unavailable."),
+      url: cleanUrl(item.url),
     };
   });
 }
 
-function renderIssueBars(issueCounts = {}) {
-  const host = document.getElementById("issue-bars");
+function renderDashboard(model) {
+  renderHeroStrip(model);
+  renderIssueLandscape(model);
+  renderJourney(model);
+  renderActions(model);
+  renderVerbatim(model);
+  updateTimestamp();
+}
+
+function renderHeroStrip(model) {
+  const total = model.totalMentions;
+  const negatives = model.negativeMentions;
+  const shareNegative = pct(negatives, total);
+  const trustRisk = scoreBand(shareNegative, [14, 26, 42], true);
+
+  const supportIssueLoad = (model.issueCounts.support_silence || 0) + (model.issueCounts.poor_support_quality || 0);
+  const resultsIssueLoad = (model.issueCounts.no_results || 0) + (model.issueCounts.weak_results || 0);
+  const conversionLoad = (model.issueCounts.price_value_mismatch || 0) + (model.issueCounts.delivery_logistics || 0) + (model.issueCounts.competitor_comparison || 0);
+  const retentionLoad = supportIssueLoad + resultsIssueLoad + (model.issueCounts.comfort_fit || 0);
+
+  const healthValue = Math.max(0, 100 - Math.round(shareNegative * 0.9 + pct(supportIssueLoad, total) * 0.6));
+
+  setMetricCard("hero-health", {
+    label: "Reputation Health",
+    value: `${healthValue}`,
+    sub: `${sentimentWord(healthValue)} outlook`,
+    severity: scoreBand(100 - healthValue, [25, 45, 62], true),
+  });
+
+  setMetricCard("hero-trust", {
+    label: "Trust Risk",
+    value: `${Math.round(shareNegative)}%`,
+    sub: `${trendLabel(model.growthByIssue.trust_skepticism)} trust skepticism`,
+    severity: trustRisk,
+  });
+
+  setMetricCard("hero-support", {
+    label: "Support Gap",
+    value: `${Math.round(pct(supportIssueLoad, total))}%`,
+    sub: `${numberFmt.format(supportIssueLoad)} support friction mentions`,
+    severity: scoreBand(pct(supportIssueLoad, total), [10, 17, 30], true),
+  });
+
+  setMetricCard("hero-conversion", {
+    label: "Conversion Friction",
+    value: `${Math.round(pct(conversionLoad, total))}%`,
+    sub: `${trendLabel(avg([model.growthByIssue.price_value_mismatch, model.growthByIssue.competitor_comparison]))} purchase-stage pressure`,
+    severity: scoreBand(pct(conversionLoad, total), [10, 18, 28], true),
+  });
+
+  setMetricCard("hero-retention", {
+    label: "Retention Friction",
+    value: `${Math.round(pct(retentionLoad, total))}%`,
+    sub: `${trendLabel(avg([model.growthByIssue.no_results, model.growthByIssue.support_silence]))} post-purchase strain`,
+    severity: scoreBand(pct(retentionLoad, total), [14, 26, 40], true),
+  });
+
+  setMetricCard("hero-mentions", {
+    label: "Total Mentions",
+    value: numberFmt.format(total),
+    sub: total ? `${numberFmt.format(negatives)} risk-bearing signals` : "Awaiting weekly signal volume",
+    severity: total >= 100 ? "low" : "medium",
+  });
+}
+
+function setMetricCard(id, data) {
+  const el = document.getElementById(id);
+  el.dataset.severity = data.severity;
+  el.innerHTML = `
+    <p class="metric-label">${data.label}</p>
+    <p class="metric-value">${data.value}</p>
+    <p class="metric-sub">${data.sub}</p>
+  `;
+}
+
+function renderIssueLandscape(model) {
+  const host = document.getElementById("issue-landscape-list");
   host.innerHTML = "";
 
-  const items = rankedEntries(issueCounts).slice(0, 8);
-  if (!items.length) {
-    host.innerHTML = `<li class="muted">No issue categories available for this period.</li>`;
+  const ranked = rankIssues(model.issueCounts).slice(0, 10);
+  if (!ranked.length) {
+    host.innerHTML = `<li class="empty-state">No issue categories captured in this cycle.</li>`;
     return;
   }
 
-  const maxValue = Math.max(...items.map(([, value]) => value), 1);
-  items.forEach(([label, value]) => {
-    const width = Math.max(6, (value / maxValue) * 100);
+  const totalIssueSignals = ranked.reduce((sum, item) => sum + item.count, 0);
+  const maxCount = Math.max(...ranked.map((item) => item.count), 1);
+
+  ranked.forEach((item) => {
+    const trend = trendLabel(model.growthByIssue[item.key]);
+    const share = pct(item.count, totalIssueSignals);
+    const width = Math.max(4, Math.round((item.count / maxCount) * 100));
+
     const row = document.createElement("li");
-    row.className = "bar-item";
+    row.className = "issue-row";
     row.innerHTML = `
-      <div class="bar-meta"><span>${label}</span><strong>${value}</strong></div>
-      <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+      <div class="issue-head">
+        <p class="issue-title"><span class="severity-dot" style="color:${severityColor(item.severity)}"></span>${item.icon} ${item.label}</p>
+        <span class="issue-count">${numberFmt.format(item.count)} mentions · ${Math.round(share)}%</span>
+      </div>
+      <div class="issue-track"><div class="issue-fill" style="width:${width}%"></div></div>
+      <div class="issue-foot">
+        <span class="issue-trend">Momentum: <strong>${trend}</strong></span>
+        <span class="issue-source">Stage: ${item.stage}</span>
+      </div>
     `;
+
     host.appendChild(row);
   });
 }
 
-function renderCriticalMentions(mentions = []) {
-  const host = document.getElementById("critical-list");
+function renderJourney(model) {
+  const host = document.getElementById("journey-track");
   host.innerHTML = "";
 
-  if (!Array.isArray(mentions) || mentions.length === 0) {
-    host.innerHTML = `<li class="muted">No critical mentions in the current summary.</li>`;
+  const stageMap = JOURNEY_STAGES.map((stage) => {
+    const entries = rankIssues(model.issueCounts).filter((item) => item.stage === stage);
+    const count = entries.reduce((sum, item) => sum + item.count, 0);
+    const topIssue = entries[0];
+    return { stage, count, topIssue };
+  });
+
+  const maxCount = Math.max(...stageMap.map((s) => s.count), 1);
+  stageMap.forEach((item) => {
+    const intensity = maxCount > 0 ? Math.round((item.count / maxCount) * 100) : 0;
+    const step = document.createElement("article");
+    step.className = "journey-step";
+    step.innerHTML = `
+      <p class="step-name">${item.stage}</p>
+      <p class="step-intensity">${intensity}%</p>
+      <p class="step-top-issue">Top drag: ${item.topIssue ? item.topIssue.label : "No dominant friction"}</p>
+      <p class="step-signals">${numberFmt.format(item.count)} mapped signals</p>
+    `;
+    host.appendChild(step);
+  });
+}
+
+function renderActions(model) {
+  const host = document.getElementById("action-priorities");
+  host.innerHTML = "";
+
+  const provided = Array.isArray(model.raw.recommended_actions) ? model.raw.recommended_actions : [];
+  const generated = buildActionPriorities(model);
+  const actions = generated.map((item, index) => {
+    const external = provided[index];
+    if (!external) return item;
+    return {
+      ...item,
+      title: cleanText(external, 120),
+    };
+  });
+
+  actions.slice(0, 3).forEach((action) => {
+    const li = document.createElement("li");
+    li.className = "action-item";
+    li.innerHTML = `
+      <div class="action-head">
+        <p class="action-title">${action.title}</p>
+        <span class="impact-chip">${action.impact} impact</span>
+      </div>
+      <p class="action-rationale">${action.rationale}</p>
+    `;
+    host.appendChild(li);
+  });
+}
+
+function buildActionPriorities(model) {
+  const ranked = rankIssues(model.issueCounts);
+  const top = ranked[0]?.label || "Support Silence";
+  const second = ranked[1]?.label || "No Results";
+
+  return [
+    {
+      title: `Close ${top} in a 7-day intervention sprint`,
+      impact: "High",
+      rationale: "Highest-volume friction is weakening trust and amplifying churn risk across critical stages.",
+    },
+    {
+      title: `Deploy guided recovery for ${second.toLowerCase()} signals`,
+      impact: "Medium",
+      rationale: "Targeted education and expectation-setting reduces first-use disappointment and repeat complaints.",
+    },
+    {
+      title: "Instrument escalation loop across Support / Aftercare",
+      impact: "High",
+      rationale: "Create accountable owners for unresolved high-severity mentions and reduce response delays.",
+    },
+  ];
+}
+
+function renderVerbatim(model) {
+  const host = document.getElementById("verbatim-feed");
+  host.innerHTML = "";
+
+  if (!model.mentions.length) {
+    host.innerHTML = `<li class="empty-state">No critical mentions in this summary window.</li>`;
     return;
   }
 
-  mentions.slice(0, 5).forEach((item) => {
+  model.mentions.slice(0, 5).forEach((mention) => {
+    const meta = CATEGORY_META[mention.issueCategory] || CATEGORY_META.neutral_discussion;
     const li = document.createElement("li");
-    li.className = "critical-item";
-
-    const text = cleanText(item.text || "Mention text unavailable.");
-    const issue = cleanText(item.issue_category || "unknown issue");
-    const severity = cleanText(item.severity || "unknown");
-    const url = item.url ? `<br><a href="${item.url}" target="_blank" rel="noopener noreferrer">View source</a>` : "";
-
-    li.innerHTML = `<strong>${severity.toUpperCase()}</strong> · ${issue}<br>${text}${url}`;
+    li.className = "mention-item";
+    li.innerHTML = `
+      <div class="mention-meta">
+        <span class="meta-chip">${meta.label}</span>
+        <span class="meta-chip">${mention.severity}</span>
+        <span class="meta-chip">${mention.source}</span>
+      </div>
+      <p class="mention-quote">“${mention.text}”</p>
+      ${mention.url ? `<a class="mention-link" href="${mention.url}" target="_blank" rel="noopener noreferrer">Open source mention ↗</a>` : ""}
+    `;
     host.appendChild(li);
   });
-}
-
-function renderInsights(summary, sourceStats, totalMentions) {
-  const host = document.getElementById("insights-list");
-  host.innerHTML = "";
-
-  const topIssue = getTopKey(summary.issue_category_counts) ?? "No dominant issue yet";
-  const fastestGrowing = getTopKey(summary.week_over_week_growth_by_issue) ?? "Awaiting week-over-week growth input";
-  const trustRisk = deriveTrustRiskLevel(sourceStats);
-  const unanswered = asNumber(summary.unanswered_mentions);
-  const supportFailure = totalMentions > 0 && unanswered / totalMentions >= 0.25
-    ? `⚠️ Elevated (${numberFmt.format(unanswered)} unanswered mentions)`
-    : `Stable (${numberFmt.format(unanswered)} unanswered mentions)`;
-
-  const insights = [
-    `Top issue: ${topIssue}`,
-    `Fastest growing issue: ${fastestGrowing}`,
-    `Trust risk level: ${trustRisk}`,
-    `Support failure indicator: ${supportFailure}`,
-  ];
-
-  insights.forEach((insight) => {
-    const li = document.createElement("li");
-    li.textContent = insight;
-    host.appendChild(li);
-  });
-}
-
-function renderActionList(actions = [], summary = {}, sourceStats = []) {
-  const host = document.getElementById("action-list");
-  host.innerHTML = "";
-
-  const fallbackActions = buildFallbackActions(summary, sourceStats);
-  const chosenActions = Array.isArray(actions) && actions.length
-    ? actions.slice(0, 3)
-    : fallbackActions;
-
-  while (chosenActions.length < 3) {
-    chosenActions.push(fallbackActions[chosenActions.length] ?? "Continue weekly pulse checks and monitor escalation velocity.");
-  }
-
-  chosenActions.slice(0, 3).forEach((action) => {
-    const li = document.createElement("li");
-    li.textContent = action;
-    host.appendChild(li);
-  });
-}
-
-function buildFallbackActions(summary = {}, sourceStats = []) {
-  const topIssue = getTopKey(summary.issue_category_counts) ?? "highest-frequency issue";
-  const highestRiskChannel = [...sourceStats].sort((a, b) => b.negativePct - a.negativePct)[0]?.name ?? "priority channels";
-
-  return [
-    `Launch a 72-hour remediation sprint for ${topIssue} with daily progress reporting.`,
-    `Deploy targeted response playbooks across ${highestRiskChannel} and close unanswered mentions within 12 hours.`,
-    "Publish a trust-recovery update outlining fixes, timelines, and support ownership.",
-  ];
-}
-
-function deriveTrustRiskLevel(sourceStats = []) {
-  const highestNegative = Math.max(...sourceStats.map((item) => item.negativePct), 0);
-  if (highestNegative >= 65) return "High";
-  if (highestNegative >= 35) return "Moderate";
-  return "Low";
-}
-
-function resolveUrgencyLabel(urgentMentions, mentions) {
-  const urgent = asNumber(urgentMentions);
-  const total = asNumber(mentions);
-  const ratio = total > 0 ? urgent / total : 0;
-
-  if (ratio >= 0.3 || urgent >= 25) return "High";
-  if (ratio >= 0.15 || urgent >= 10) return "Medium";
-  return "Low";
-}
-
-function getSentimentLabel(negativePct) {
-  if (negativePct >= 55) return "Negative";
-  if (negativePct >= 30) return "Mixed";
-  return "Positive";
-}
-
-function getSignalStatusClass(negativePct) {
-  if (negativePct >= 55) return "status-negative";
-  if (negativePct >= 30) return "status-mixed";
-  return "status-positive";
-}
-
-function getSignalColor(negativePct) {
-  if (negativePct >= 55) return "#ff5d6f";
-  if (negativePct >= 30) return "#f4c95d";
-  return "#31d78f";
 }
 
 function showFallback(error) {
   console.warn("Could not load weekly summary.", error);
   document.getElementById("fallback-message").classList.remove("hidden");
+  const emptyModel = normalizeSummary({
+    total_mentions: 0,
+    negative_mentions: 0,
+    issue_category_counts: {},
+    top_critical_mentions: [],
+    recommended_actions: [],
+  });
+  renderDashboard(emptyModel);
   updateTimestamp("Data unavailable");
-  const emptyStats = deriveSourceStats({}, 0, 0);
-  renderSignalNetwork(emptyStats, 0, 0);
-  renderIssueBars({});
-  renderCriticalMentions([]);
-  renderInsights({}, emptyStats, 0);
-  renderActionList([], {}, emptyStats);
-  setText("metric-total", "0");
-  setText("metric-negative", "0");
-  setText("metric-top-issue", "Unavailable");
-  setText("metric-top-attribute", "Unavailable");
+}
+
+function rankIssues(issueCounts) {
+  return Object.entries(issueCounts || {})
+    .filter(([, count]) => asNumber(count) >= 0)
+    .map(([key, count]) => {
+      const meta = CATEGORY_META[key] || CATEGORY_META.neutral_discussion;
+      return {
+        key,
+        count: asNumber(count),
+        label: meta.label,
+        icon: meta.icon,
+        severity: meta.severity,
+        stage: meta.stage,
+      };
+    })
+    .sort((a, b) => b.count - a.count)
+    .filter((item, index) => index < 6 || item.count > 0);
+}
+
+function mapToCanonicalCategory(rawKey, existingCounts = {}) {
+  const key = String(rawKey || "").trim().toLowerCase();
+
+  if (!key || key === "other" || key === "misc" || key === "general") {
+    const fallback = inferCategoryFromContext(key, existingCounts);
+    return fallback || "neutral_discussion";
+  }
+
+  if (CATEGORY_META[key]) return key;
+
+  const fromLegacy = Object.entries(LEGACY_CATEGORY_MAP).find(([token]) => key.includes(token));
+  if (fromLegacy) return fromLegacy[1];
+
+  return inferCategoryFromContext(key, existingCounts) || "neutral_discussion";
+}
+
+function inferCategoryFromContext(key, existingCounts = {}) {
+  const ranked = Object.entries(existingCounts || {}).sort((a, b) => asNumber(b[1]) - asNumber(a[1]));
+  const currentTop = ranked[0]?.[0];
+
+  if (key.includes("ship") || key.includes("deliver")) return "delivery_logistics";
+  if (key.includes("support") || key.includes("reply")) return "poor_support_quality";
+  if (key.includes("result") || key.includes("effect")) return currentTop === "no_results" ? "no_results" : "weak_results";
+  if (key.includes("price") || key.includes("cost")) return "price_value_mismatch";
+  if (key.includes("trust") || key.includes("scam")) return "trust_skepticism";
+  if (key.includes("setup") || key.includes("onboard")) return "onboarding_confusion";
+  if (key.includes("connect") || key.includes("app") || key.includes("bluetooth")) return "app_connectivity";
+
+  return null;
+}
+
+function normalizeSeverity(rawSeverity, categoryKey) {
+  const sev = String(rawSeverity || "").toLowerCase();
+  if (sev.includes("critical")) return "critical";
+  if (sev.includes("high")) return "high";
+  if (sev.includes("med")) return "medium";
+  if (sev.includes("low")) return "low";
+  return CATEGORY_META[categoryKey]?.severity || "medium";
+}
+
+function severityColor(severity) {
+  if (severity === "critical") return "#ff5f73";
+  if (severity === "high") return "#ff9b62";
+  if (severity === "medium") return "#f2b24d";
+  return "#6fe3bf";
+}
+
+function trendLabel(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "stable";
+  if (n > 0.06) return `▲ up ${Math.round(n * 100)}%`;
+  if (n < -0.06) return `▼ down ${Math.round(Math.abs(n) * 100)}%`;
+  return "stable";
+}
+
+function sentimentWord(score) {
+  if (score >= 78) return "resilient";
+  if (score >= 56) return "watchlist";
+  return "at-risk";
+}
+
+function scoreBand(value, thresholds = [20, 35, 50], inverse = false) {
+  const [a, b, c] = thresholds;
+  if (inverse) {
+    if (value >= c) return "critical";
+    if (value >= b) return "high";
+    if (value >= a) return "medium";
+    return "low";
+  }
+  if (value <= a) return "low";
+  if (value <= b) return "medium";
+  if (value <= c) return "high";
+  return "critical";
+}
+
+function cleanSource(source) {
+  const text = String(source).trim();
+  if (!text) return "Unknown";
+  return text.slice(0, 24);
+}
+
+function cleanText(text, max = 180) {
+  return String(text).replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function cleanUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  return /^https?:\/\//i.test(raw) ? raw : "";
 }
 
 function updateTimestamp(prefix = "Updated") {
@@ -301,49 +480,21 @@ function updateTimestamp(prefix = "Updated") {
   el.textContent = `${prefix}: ${stamp}`;
 }
 
-function rankedEntries(record = {}) {
-  return Object.entries(record || {})
-    .map(([key, value]) => [titleCase(key), asNumber(value)])
-    .sort((a, b) => b[1] - a[1]);
+function pct(part, total) {
+  const t = asNumber(total);
+  if (t <= 0) return 0;
+  return (asNumber(part) / t) * 100;
 }
 
-function getTopKey(record = {}) {
-  const top = rankedEntries(record)[0];
-  return top ? top[0] : null;
-}
-
-function normalizeSourceMap(record = {}) {
-  const normalized = {};
-  if (!record || typeof record !== "object") return normalized;
-
-  Object.entries(record).forEach(([rawKey, value]) => {
-    const key = rawKey.toLowerCase();
-    if (key.includes("reddit")) normalized.Reddit = asNumber(value);
-    else if (key.includes("review")) normalized.Reviews = asNumber(value);
-    else if (key.includes("youtube") || key.includes("yt")) normalized.YouTube = asNumber(value);
-    else if (key.includes("web") || key.includes("site") || key.includes("blog")) normalized.Web = asNumber(value);
-  });
-  return normalized;
-}
-
-function cleanText(text) {
-  return String(text).trim().slice(0, 220);
-}
-
-function setText(id, value) {
-  const el = document.getElementById(id);
-  el.textContent = value;
+function avg(values = []) {
+  const nums = values.map(Number).filter(Number.isFinite);
+  if (!nums.length) return Number.NaN;
+  return nums.reduce((sum, n) => sum + n, 0) / nums.length;
 }
 
 function asNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
-}
-
-function titleCase(value) {
-  return String(value)
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
 loadSummary();
