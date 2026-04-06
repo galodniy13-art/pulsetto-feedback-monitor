@@ -1,1 +1,1 @@
-# Add project dependencies here.
+# No external dependencies required for MVP collector.
