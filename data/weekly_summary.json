@@ -1,1 +1,12 @@
-{}
+{
+  "total_mentions": 0,
+  "negative_mentions": 0,
+  "issue_category_counts": {},
+  "attribute_counts": {},
+  "top_critical_mentions": [],
+  "recommended_actions": [
+    "Review all high-severity mentions and respond within 24 hours.",
+    "Clarify onboarding steps and troubleshooting in a short quick-start guide.",
+    "Create a recurring FAQ update from top issue categories each week."
+  ]
+}
