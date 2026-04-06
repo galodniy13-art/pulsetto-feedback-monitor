@@ -1,15 +1,26 @@
 # Pulsetto Feedback Monitor
 
-Simple MVP pipeline that collects public Reddit mentions of **"Pulsetto"** and stores them in `data/mentions.csv`.
+Simple MVP pipeline that collects public Reddit mentions of **"Pulsetto"**, classifies issue patterns, and generates a weekly summary JSON.
 
 ## What it does
 
 - Fetches Reddit search results for keyword `Pulsetto`
-- Normalizes fields into a consistent schema
-- Stores rows in CSV
+- Normalizes fields into a consistent schema and stores rows in CSV
 - Avoids duplicates using `url` as unique key
+- Classifies each mention with deterministic keyword rules (no paid APIs):
+  - `sentiment`: `positive`, `mixed`, `negative`
+  - `issue_category`: `support_silence`, `effectiveness_doubt`, `onboarding_confusion`, `comfort_wearability`, `price_value`, `trust_credibility`, `other`
+  - `severity`: `low`, `medium`, `high`
+  - `attribute_affected`: `support`, `product`, `onboarding`, `comfort`, `price`, `trust`, `other`
+- Generates `data/weekly_summary.json` with:
+  - `total_mentions`
+  - `negative_mentions`
+  - `issue_category_counts`
+  - `attribute_counts`
+  - `top_critical_mentions`
+  - `recommended_actions`
 
-Saved columns:
+Saved mention columns in `data/mentions.csv`:
 
 - `title`
 - `body_text`
@@ -46,6 +57,13 @@ Saved columns:
 python scripts/run_pipeline.py
 ```
 
-Output is written to:
+One command runs:
+
+1. collection (`fetch_reddit_mentions`)
+2. classification (`classify_mentions`)
+3. summary generation (`build_weekly_summary`)
+
+Output files:
 
 - `data/mentions.csv`
+- `data/weekly_summary.json`
