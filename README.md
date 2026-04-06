@@ -74,6 +74,28 @@ Output files:
 - `data/mentions.csv`
 - `data/weekly_summary.json`
 
+## Public demo via GitHub Pages (QR-ready)
+
+This repo is already static and can be hosted directly with **GitHub Pages**.
+
+### Enable GitHub Pages
+
+1. Push this repository to GitHub.
+2. Open **Settings → Pages**.
+3. Under **Build and deployment**, set:
+   - **Source:** `Deploy from a branch`
+   - **Branch:** `main` (or your default branch)
+   - **Folder:** `/ (root)`
+4. Save, then wait for the Pages deployment to finish.
+
+### Open the public URL
+
+After deployment, open:
+
+- `https://<your-github-username>.github.io/pulsetto-feedback-monitor/`
+
+The root URL automatically redirects to `web/`, where the dashboard lives, and the dashboard fetches `data/weekly_summary.json` with a GitHub Pages-safe path.
+
 ## GitHub Actions weekly run
 
 A GitHub Actions workflow is included at `.github/workflows/weekly_report.yml`.
