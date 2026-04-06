@@ -10,15 +10,15 @@
     <main class="dashboard-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Pulsetto neurotech reputation intelligence</p>
+          <p class="eyebrow">Pulsetto neurotech reputation overview</p>
           <h1>Reputation Intelligence Console</h1>
         </div>
         <p id="last-updated" class="timestamp">Updated: —</p>
       </header>
 
       <div id="fallback-message" class="fallback hidden" role="status">
-        Summary data is unavailable. Run the weekly pipeline to populate
-        <code>data/weekly_summary.json</code> and refresh.
+        Summary data is unavailable. Run the weekly pipeline to update
+        <code>data/weekly_summary.json</code>, then refresh this dashboard.
       </div>
 
       <section class="hero-strip" aria-label="Hero status indicators">
@@ -35,7 +35,7 @@
           <div class="section-title-row">
             <div>
               <h2 id="issue-landscape-title">Issue Landscape</h2>
-              <p class="section-subtitle">Ranked by current frequency, share, and momentum.</p>
+              <p class="section-subtitle">Ranked by how often issues appear, how large they are, and whether they are rising.</p>
             </div>
           </div>
           <ul id="issue-landscape-list" class="issue-list"></ul>
@@ -51,7 +51,7 @@
 
           <section class="stacked-section" aria-labelledby="verbatim-title">
             <div class="section-title-row compact">
-              <h2 id="verbatim-title">Critical Verbatim Feed</h2>
+              <h2 id="verbatim-title">Critical Mention Feed</h2>
             </div>
             <ul id="verbatim-feed" class="mention-list"></ul>
           </section>
@@ -61,7 +61,7 @@
           <div class="section-title-row">
             <div>
               <h2 id="journey-title">Customer Friction Journey</h2>
-              <p class="section-subtitle">Where customer experience breaks across lifecycle stages.</p>
+              <p class="section-subtitle">Where customers run into the most friction across the journey.</p>
             </div>
           </div>
           <div id="journey-track" class="journey-track"></div>

@@ -335,11 +335,13 @@ h2 {
   border-radius: 11px;
   padding: 0.66rem;
   background: rgba(10, 18, 33, 0.58);
+  overflow: hidden;
 }
 
 .action-head {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 0.5rem;
   margin-bottom: 0.3rem;
 }
@@ -348,6 +350,7 @@ h2 {
   margin: 0;
   font-size: 0.91rem;
   font-weight: 600;
+  min-width: 0;
 }
 
 .impact-chip {
@@ -356,8 +359,44 @@ h2 {
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0.2rem 0.42rem;
+  padding: 0.22rem 0.5rem;
   color: #d4e5fc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: min(100%, 10.5rem);
+  justify-self: end;
+}
+
+.impact-chip::before {
+  content: "";
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px color-mix(in srgb, currentColor 65%, transparent);
+  flex: 0 0 auto;
+}
+
+.impact-chip[data-impact="high"] {
+  border-color: color-mix(in srgb, var(--risk) 70%, #ffd8dc 30%);
+  background: color-mix(in srgb, var(--risk) 13%, transparent);
+  color: #ff9ba7;
+}
+
+.impact-chip[data-impact="medium"] {
+  border-color: color-mix(in srgb, var(--warn) 72%, #ffe2a8 28%);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: #ffc979;
+}
+
+.impact-chip[data-impact="low"] {
+  border-color: color-mix(in srgb, var(--accent) 60%, #a7f5ef 40%);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: #8ce9ff;
 }
 
 .action-rationale {
@@ -444,6 +483,15 @@ h2 {
 
   .journey-track {
     grid-template-columns: 1fr;
+  }
+
+  .action-head {
+    grid-template-columns: 1fr;
+  }
+
+  .impact-chip {
+    justify-self: start;
+    max-width: 100%;
   }
 
   h1 {
