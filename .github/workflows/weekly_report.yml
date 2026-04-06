@@ -1,0 +1,11 @@
+name: Weekly Feedback Report
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scaffold workflow
+        run: echo "Weekly report workflow scaffold configured."
