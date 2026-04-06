@@ -67,3 +67,25 @@ Output files:
 
 - `data/mentions.csv`
 - `data/weekly_summary.json`
+
+## GitHub Actions weekly run
+
+A GitHub Actions workflow is included at `.github/workflows/weekly_report.yml`.
+
+It runs the pipeline:
+
+- on a weekly schedule (every Monday at 09:00 UTC)
+- on manual trigger (`workflow_dispatch`)
+
+### Run manually from GitHub
+
+1. Open your repository on GitHub.
+2. Go to **Actions**.
+3. Select **Weekly Pulsetto Pipeline**.
+4. Click **Run workflow**.
+5. Choose the branch and click **Run workflow**.
+
+After the run completes, download `weekly-pipeline-output` from the workflow run page to get:
+
+- `data/mentions.csv`
+- `data/weekly_summary.json`

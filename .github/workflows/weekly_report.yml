@@ -1,11 +1,36 @@
-name: Weekly Feedback Report
+name: Weekly Pulsetto Pipeline
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1'
 
 jobs:
-  scaffold:
+  run-pipeline:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Scaffold workflow
-        run: echo "Weekly report workflow scaffold configured."
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        run: python scripts/run_pipeline.py
+
+      - name: Upload pipeline artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-pipeline-output
+          path: |
+            data/mentions.csv
+            data/weekly_summary.json
+          if-no-files-found: warn
