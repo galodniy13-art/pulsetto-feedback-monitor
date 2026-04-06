@@ -331,7 +331,7 @@ function renderVerbatim(model) {
   model.mentions.slice(0, 5).forEach((mention) => {
     const meta = CATEGORY_META[mention.issueCategory] || CATEGORY_META.neutral_discussion;
     const li = document.createElement("li");
-    li.className = "mention-item";
+    li.className = mention.url ? "mention-item mention-item-link" : "mention-item";
     li.innerHTML = `
       <div class="mention-meta">
         <span class="meta-chip">${meta.label}</span>
@@ -339,8 +339,22 @@ function renderVerbatim(model) {
         <span class="meta-chip">${mention.source}</span>
       </div>
       <p class="mention-quote">“${mention.text}”</p>
-      ${mention.url ? `<a class="mention-link" href="${mention.url}" target="_blank" rel="noopener noreferrer">View source mention ↗</a>` : ""}
+      ${mention.url ? `<a class="mention-link" href="${mention.url}" target="_blank" rel="noopener noreferrer" aria-label="Open source mention from ${mention.source}">View source mention ↗</a>` : ""}
     `;
+
+    if (mention.url) {
+      li.tabIndex = 0;
+      li.addEventListener("click", (event) => {
+        if (event.target.closest("a")) return;
+        window.open(mention.url, "_blank", "noopener,noreferrer");
+      });
+      li.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        window.open(mention.url, "_blank", "noopener,noreferrer");
+      });
+    }
+
     host.appendChild(li);
   });
 }
