@@ -20,8 +20,12 @@ ISSUE_STAGE_MAP: dict[str, str] = {
     "trust_skepticism": "discovery",
     "scientific_credibility": "discovery",
     "delivery_logistics": "purchase",
+    "pre_purchase_question": "discovery",
+    "usage_question": "setup",
+    "general_awareness": "discovery",
+    "experience_sharing": "support_aftercare",
+    "recommendation_seeking": "discovery",
     "positive_advocacy": "support_aftercare",
-    "neutral_discussion": "discovery",
     "competitor_comparison": "discovery",
     "other": "discovery",
 }
