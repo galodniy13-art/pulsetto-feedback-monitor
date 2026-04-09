@@ -12,9 +12,14 @@ const CATEGORY_META = {
   trust_skepticism: { label: "Trust Skepticism", icon: "◓", severity: "high", stage: "Discovery" },
   scientific_credibility: { label: "Scientific Credibility", icon: "◔", severity: "high", stage: "Discovery" },
   delivery_logistics: { label: "Delivery Logistics", icon: "◕", severity: "medium", stage: "Purchase" },
+  pre_purchase_question: { label: "Pre-Purchase Question", icon: "◖", severity: "low", stage: "Discovery" },
+  usage_question: { label: "Usage Question", icon: "◗", severity: "low", stage: "Setup" },
+  general_awareness: { label: "General Awareness", icon: "◍", severity: "low", stage: "Discovery" },
+  experience_sharing: { label: "Experience Sharing", icon: "◉", severity: "low", stage: "Support / Aftercare" },
+  recommendation_seeking: { label: "Recommendation Seeking", icon: "◌", severity: "low", stage: "Discovery" },
   positive_advocacy: { label: "Positive Advocacy", icon: "✦", severity: "low", stage: "Support / Aftercare" },
-  neutral_discussion: { label: "Neutral Discussion", icon: "·", severity: "low", stage: "Discovery" },
   competitor_comparison: { label: "Competitor Comparison", icon: "▣", severity: "medium", stage: "Discovery" },
+  other: { label: "Other", icon: "·", severity: "low", stage: "Discovery" },
 };
 
 const LEGACY_CATEGORY_MAP = {
@@ -46,7 +51,12 @@ const LEGACY_CATEGORY_MAP = {
   logistics: "delivery_logistics",
   positive: "positive_advocacy",
   praise: "positive_advocacy",
-  neutral: "neutral_discussion",
+  neutral: "general_awareness",
+  pre_purchase: "pre_purchase_question",
+  recommendation: "recommendation_seeking",
+  awareness: "general_awareness",
+  experience: "experience_sharing",
+  usage: "usage_question",
   comparison: "competitor_comparison",
   competitor: "competitor_comparison",
 };
@@ -118,7 +128,7 @@ function normalizeMentions(items, issueCounts) {
   if (!Array.isArray(items) || !items.length) return [];
 
   return items.map((item) => {
-    const canonical = mapToCanonicalCategory(item.issue_category || item.category || "neutral_discussion", issueCounts);
+    const canonical = mapToCanonicalCategory(item.issue_category || item.category || "other", issueCounts);
     return {
       issueCategory: canonical,
       severity: normalizeSeverity(item.severity, canonical),
@@ -329,7 +339,7 @@ function renderVerbatim(model) {
   }
 
   model.mentions.slice(0, 5).forEach((mention) => {
-    const meta = CATEGORY_META[mention.issueCategory] || CATEGORY_META.neutral_discussion;
+    const meta = CATEGORY_META[mention.issueCategory] || CATEGORY_META.other;
     const li = document.createElement("li");
     li.className = mention.url ? "mention-item mention-item-link" : "mention-item";
     li.innerHTML = `
@@ -377,7 +387,7 @@ function rankIssues(issueCounts) {
   return Object.entries(issueCounts || {})
     .filter(([, count]) => asNumber(count) >= 0)
     .map(([key, count]) => {
-      const meta = CATEGORY_META[key] || CATEGORY_META.neutral_discussion;
+      const meta = CATEGORY_META[key] || CATEGORY_META.other;
       return {
         key,
         count: asNumber(count),
@@ -396,7 +406,7 @@ function mapToCanonicalCategory(rawKey, existingCounts = {}) {
 
   if (!key || key === "other" || key === "misc" || key === "general") {
     const fallback = inferCategoryFromContext(key, existingCounts);
-    return fallback || "neutral_discussion";
+    return fallback || "other";
   }
 
   if (CATEGORY_META[key]) return key;
@@ -404,7 +414,7 @@ function mapToCanonicalCategory(rawKey, existingCounts = {}) {
   const fromLegacy = Object.entries(LEGACY_CATEGORY_MAP).find(([token]) => key.includes(token));
   if (fromLegacy) return fromLegacy[1];
 
-  return inferCategoryFromContext(key, existingCounts) || "neutral_discussion";
+  return inferCategoryFromContext(key, existingCounts) || "other";
 }
 
 function inferCategoryFromContext(key, existingCounts = {}) {
@@ -417,6 +427,11 @@ function inferCategoryFromContext(key, existingCounts = {}) {
   if (key.includes("price") || key.includes("cost")) return "price_value_mismatch";
   if (key.includes("trust") || key.includes("scam")) return "trust_skepticism";
   if (key.includes("setup") || key.includes("onboard")) return "onboarding_confusion";
+  if (key.includes("how") || key.includes("mode") || key.includes("often") || key.includes("frequency")) return "usage_question";
+  if (key.includes("buy") || key.includes("worth")) return "pre_purchase_question";
+  if (key.includes("recommend") || key.includes("review")) return "recommendation_seeking";
+  if (key.includes("heard") || key.includes("what is")) return "general_awareness";
+  if (key.includes("experience") || key.includes("been using")) return "experience_sharing";
   if (key.includes("connect") || key.includes("app") || key.includes("bluetooth")) return "app_connectivity";
 
   return null;

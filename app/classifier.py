@@ -33,8 +33,12 @@ ISSUE_TO_ATTRIBUTE: dict[str, str] = {
     "trust_skepticism": "trust",
     "scientific_credibility": "trust",
     "delivery_logistics": "delivery",
+    "pre_purchase_question": "discovery",
+    "usage_question": "onboarding",
+    "general_awareness": "discovery",
+    "experience_sharing": "engagement",
+    "recommendation_seeking": "discovery",
     "positive_advocacy": "advocacy",
-    "neutral_discussion": "discussion",
     "competitor_comparison": "competition",
     "other": "other",
 }
@@ -51,8 +55,12 @@ CATEGORY_DEFAULT_SEVERITY: dict[str, str] = {
     "trust_skepticism": "high",
     "scientific_credibility": "medium",
     "delivery_logistics": "medium",
+    "pre_purchase_question": "low",
+    "usage_question": "low",
+    "general_awareness": "low",
+    "experience_sharing": "low",
+    "recommendation_seeking": "low",
     "positive_advocacy": "low",
-    "neutral_discussion": "low",
     "competitor_comparison": "medium",
     "other": "low",
 }
@@ -119,14 +127,44 @@ CATEGORY_RULES: list[dict[str, object]] = [
         "any_of": ("any alternatives", "competitor", "competing product", "is x better"),
     },
     {
+        "category": "pre_purchase_question",
+        "all_of": (
+            ("buy", "buying", "purchase", "thinking of buying", "considering", "before i buy", "worth it"),
+            ("?", "anyone", "does it work", "is it worth it", "worth buying", "should i"),
+        ),
+        "any_of": ("does it work", "is it worth it", "thinking of buying", "before i buy", "worth buying"),
+    },
+    {
+        "category": "recommendation_seeking",
+        "all_of": (
+            ("anyone", "anyone tried", "recommend", "recommendation", "feedback", "opinions", "review"),
+        ),
+        "any_of": ("anyone tried", "would you recommend", "looking for feedback", "any reviews", "worth it?"),
+    },
+    {
+        "category": "usage_question",
+        "all_of": (
+            ("how", "how do i", "how long", "how often", "what mode", "when should", "can i use"),
+            ("use", "using", "session", "mode", "daily", "routine", "frequency"),
+        ),
+        "any_of": ("how do i use", "how long should", "how often should", "what mode", "can i use it"),
+    },
+    {
+        "category": "general_awareness",
+        "all_of": (("heard about", "saw this", "what is this", "what is pulsetto", "came across", "anyone know"),),
+        "any_of": ("heard about", "saw this", "what is this"),
+    },
+    {
+        "category": "experience_sharing",
+        "all_of": (
+            ("my experience", "i've been using", "i have been using", "after two weeks", "for me personally", "in my case"),
+        ),
+        "any_of": ("my experience", "after two weeks", "for me personally"),
+    },
+    {
         "category": "positive_advocacy",
         "all_of": (("love", "great", "helped", "works", "worked", "recommend", "impressed", "happy"),),
         "any_of": ("highly recommend", "worth it", "game changer", "really helped", "good experience"),
-    },
-    {
-        "category": "neutral_discussion",
-        "all_of": (("anyone", "thoughts", "experience", "opinions", "question", "curious", "considering"),),
-        "any_of": ("has anyone tried", "what do you think", "looking for feedback", "any review"),
     },
 ]
 
@@ -197,6 +235,26 @@ def _rule_matches(combined_text: str, rule: dict[str, object]) -> bool:
 
 def _secondary_pass_category(combined_text: str, sentiment: str) -> str | None:
     """Use broad phrase combinations before falling back to `other`."""
+    if any(token in combined_text for token in ("compared to", " vs ", "versus", "better than", "instead of", "alternative to")):
+        return "competitor_comparison"
+
+    if any(token in combined_text for token in ("does it work", "is it worth it", "thinking of buying", "before i buy", "worth buying")):
+        return "pre_purchase_question"
+
+    if any(token in combined_text for token in ("anyone tried", "would you recommend", "recommendation", "looking for feedback", "any review")):
+        return "recommendation_seeking"
+
+    if any(token in combined_text for token in ("how do i use", "how long", "how often", "what mode", "setup", "getting started")):
+        if any(token in combined_text for token in ("confusing", "unclear", "stuck", "can't figure", "cannot figure")):
+            return "onboarding_confusion"
+        return "usage_question"
+
+    if any(token in combined_text for token in ("heard about", "saw this", "what is this", "what is pulsetto", "came across")):
+        return "general_awareness"
+
+    if any(token in combined_text for token in ("my experience", "i've been using", "i have been using", "after two weeks", "for me personally", "in my case")):
+        return "experience_sharing"
+
     if any(token in combined_text for token in ("support", "ticket", "customer service", "reply")):
         if any(token in combined_text for token in ("no", "never", "waiting", "ignored", "ghosted", "unanswered")):
             return "support_silence"
@@ -231,9 +289,6 @@ def _secondary_pass_category(combined_text: str, sentiment: str) -> str | None:
     if sentiment == "positive":
         return "positive_advocacy"
 
-    if sentiment == "mixed" and any(token in combined_text for token in ("anyone", "thoughts", "opinions", "question", "curious")):
-        return "neutral_discussion"
-
     return None
 
 
@@ -250,7 +305,7 @@ def _derive_sentiment(combined_text: str) -> str:
         return "negative"
     if positive_hits > 0:
         return "positive"
-    return "mixed"
+    return "neutral"
 
 
 def _derive_severity(combined_text: str, category: str, sentiment: str) -> str:
@@ -269,7 +324,7 @@ def _derive_severity(combined_text: str, category: str, sentiment: str) -> str:
     ):
         severity = "critical"
 
-    if category in {"positive_advocacy", "neutral_discussion"}:
+    if category in {"positive_advocacy", "pre_purchase_question", "recommendation_seeking", "general_awareness", "experience_sharing", "usage_question"}:
         return "low"
 
     return severity

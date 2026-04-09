@@ -9,7 +9,7 @@ Simple MVP pipeline that collects public Reddit mentions of **"Pulsetto"**, clas
 - Avoids duplicates using `url` as unique key
 - Classifies each mention with deterministic keyword rules (no paid APIs):
   - `sentiment`: `positive`, `mixed`, `negative`
-  - `issue_category`: `support_silence`, `poor_support_quality`, `no_results`, `weak_results`, `onboarding_confusion`, `app_connectivity`, `comfort_fit`, `price_value_mismatch`, `trust_skepticism`, `scientific_credibility`, `delivery_logistics`, `positive_advocacy`, `neutral_discussion`, `competitor_comparison`, `other`
+  - `issue_category`: `support_silence`, `poor_support_quality`, `no_results`, `weak_results`, `onboarding_confusion`, `app_connectivity`, `comfort_fit`, `price_value_mismatch`, `trust_skepticism`, `scientific_credibility`, `delivery_logistics`, `competitor_comparison`, `pre_purchase_question`, `usage_question`, `general_awareness`, `experience_sharing`, `recommendation_seeking`, `positive_advocacy`, `other`
   - `severity`: `low`, `medium`, `high`
   - `attribute_affected`: mapped business area (`support`, `product`, `technical`, `delivery`, `trust`, etc.)
 - Generates `data/weekly_summary.json` with:
