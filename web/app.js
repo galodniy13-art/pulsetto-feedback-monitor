@@ -8,12 +8,12 @@ const CATEGORY_META = {
   onboarding_confusion: { label: "Onboarding Confusion", icon: "◈", severity: "high", stage: "Setup" },
   app_connectivity: { label: "App Connectivity", icon: "◐", severity: "high", stage: "Setup" },
   comfort_fit: { label: "Comfort & Fit", icon: "◑", severity: "medium", stage: "First Use" },
-  price_value_mismatch: { label: "Price-Value Mismatch", icon: "◒", severity: "medium", stage: "Purchase" },
-  trust_skepticism: { label: "Trust Skepticism", icon: "◓", severity: "high", stage: "Discovery" },
+  price_value_mismatch: { label: "Price / Value Mismatch", icon: "◒", severity: "medium", stage: "Purchase" },
+  trust_skepticism: { label: "Trust & Skepticism", icon: "◓", severity: "high", stage: "Discovery" },
   scientific_credibility: { label: "Scientific Credibility", icon: "◔", severity: "high", stage: "Discovery" },
   delivery_logistics: { label: "Delivery Logistics", icon: "◕", severity: "medium", stage: "Purchase" },
-  pre_purchase_question: { label: "Pre-Purchase Question", icon: "◖", severity: "low", stage: "Discovery" },
-  usage_question: { label: "Usage Question", icon: "◗", severity: "low", stage: "Setup" },
+  pre_purchase_question: { label: "Pre-Purchase Questions", icon: "◖", severity: "low", stage: "Discovery" },
+  usage_question: { label: "Usage Questions", icon: "◗", severity: "low", stage: "Setup" },
   general_awareness: { label: "General Awareness", icon: "◍", severity: "low", stage: "Discovery" },
   experience_sharing: { label: "Experience Sharing", icon: "◉", severity: "low", stage: "Support / Aftercare" },
   recommendation_seeking: { label: "Recommendation Seeking", icon: "◌", severity: "low", stage: "Discovery" },
@@ -52,6 +52,7 @@ const LEGACY_CATEGORY_MAP = {
   positive: "positive_advocacy",
   praise: "positive_advocacy",
   neutral: "general_awareness",
+  neutral_discussion: "general_awareness",
   pre_purchase: "pre_purchase_question",
   recommendation: "recommendation_seeking",
   awareness: "general_awareness",
@@ -384,7 +385,7 @@ function showFallback(error) {
 }
 
 function rankIssues(issueCounts) {
-  return Object.entries(issueCounts || {})
+  const ranked = Object.entries(issueCounts || {})
     .filter(([, count]) => asNumber(count) >= 0)
     .map(([key, count]) => {
       const meta = CATEGORY_META[key] || CATEGORY_META.other;
@@ -397,8 +398,23 @@ function rankIssues(issueCounts) {
         stage: meta.stage,
       };
     })
-    .sort((a, b) => b.count - a.count)
-    .filter((item, index) => index < 6 || item.count > 0);
+    .sort((a, b) => b.count - a.count);
+
+  const otherIndex = ranked.findIndex((item) => item.key === "other");
+  if (otherIndex >= 0) {
+    const totalSignals = ranked.reduce((sum, item) => sum + item.count, 0);
+    const otherItem = ranked[otherIndex];
+    const isNonTrivial = otherItem.count >= 3 || pct(otherItem.count, totalSignals) >= 6;
+
+    if (!isNonTrivial) {
+      ranked.splice(otherIndex, 1);
+    } else {
+      ranked.splice(otherIndex, 1);
+      ranked.push(otherItem);
+    }
+  }
+
+  return ranked.filter((item, index) => index < 6 || item.count > 0);
 }
 
 function mapToCanonicalCategory(rawKey, existingCounts = {}) {
