@@ -105,6 +105,8 @@ It runs the pipeline:
 - on a weekly schedule (every Monday at 09:00 UTC)
 - on manual trigger (`workflow_dispatch`)
 
+During each run, GitHub Actions executes `python scripts/run_pipeline.py`, stages changes in `data/`, and pushes a bot commit (`chore: refresh weekly Pulsetto data`) only when generated files changed. This keeps the GitHub Pages dashboard up to date automatically without changing the Pages setup.
+
 ### Run manually from GitHub
 
 1. Open your repository on GitHub.
